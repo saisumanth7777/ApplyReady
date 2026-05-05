@@ -58,38 +58,67 @@ export async function POST(req: NextRequest) {
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      max_tokens: 8096,
+      system: `You are an elite resume writer and career coach with 20+ years of experience helping candidates land roles at top companies. You are an expert in ATS systems, recruiter psychology, and crafting resumes that get interviews. You write with precision — every word earns its place.`,
       messages: [
         {
           role: "user",
-          content: `You are an expert resume writer and ATS (Applicant Tracking System) optimization specialist.
+          content: `Tailor the resume below for the job description provided. Follow every instruction exactly.
 
-Your task is to rewrite the candidate's resume to be perfectly tailored for the provided job description.
+━━━ STEP 1: SILENTLY ANALYZE (do not output this) ━━━
+- What are the top 5 must-have skills/keywords from the JD?
+- What experience in the resume maps to those requirements?
+- What measurable achievements can be emphasized?
+- What job title and seniority level is the role?
 
-RULES:
-1. Keep all factual information accurate — do NOT invent jobs, degrees, or skills the candidate doesn't have
-2. Reorder and emphasize existing experience to highlight what's most relevant to this job
-3. Mirror keywords and phrases from the job description naturally throughout the resume
-4. Use strong action verbs (Led, Built, Improved, Delivered, Designed, Managed, etc.)
-5. Quantify achievements where possible using numbers already present in the resume
-6. Follow strict ATS formatting: no tables, no columns, no headers/footers, no images
-7. Use standard section headings: CONTACT INFORMATION, PROFESSIONAL SUMMARY, WORK EXPERIENCE, EDUCATION, SKILLS, CERTIFICATIONS (only if present)
-8. Keep bullet points concise and achievement-focused (start with action verb)
-9. Output plain text only — no markdown, no special characters except dashes and pipes for structure
+━━━ STEP 2: REWRITE THE RESUME ━━━
 
----
+STRICT RULES:
+• NEVER invent jobs, degrees, skills, or numbers not in the original resume
+• Every bullet point = strong action verb + what you did + measurable result (if available)
+• Mirror the JD's exact keywords and phrases naturally — ATS needs exact matches
+• Reorder bullets within each job to put the most JD-relevant ones first
+• Cut weak/irrelevant bullets; keep only what's relevant to this specific role
 
-ORIGINAL RESUME:
+SECTION-BY-SECTION GUIDE:
+
+[NAME & CONTACT]
+Full name on first line. Contact on second line: Phone | Email | LinkedIn | City, State
+No graphics, photos, or icons.
+
+[PROFESSIONAL SUMMARY]
+3-4 punchy sentences. Mention: (1) years of experience + field, (2) the exact job title you're applying for, (3) 2-3 skills directly from the JD, (4) a key career achievement. Make it feel written for THIS job, not generic.
+
+[WORK EXPERIENCE]
+Format each role exactly as:
+Company Name | Job Title | Month Year – Month Year
+
+• Start every bullet with a past-tense action verb (Led, Built, Designed, Automated, Reduced, Grew, Delivered, Managed, etc.)
+• Include numbers wherever the original resume has them
+• Write 4-6 bullets per role, most JD-relevant first
+• Do NOT use "Responsible for" or "Helped with"
+
+[EDUCATION]
+Degree | Major | University | Year
+Include GPA only if 3.5+. Include relevant coursework only if it directly matches the JD.
+
+[SKILLS]
+Put JD-matched skills first. Group logically (e.g. Languages: Python, SQL | Frameworks: React, Node.js | Tools: Git, Docker)
+
+[CERTIFICATIONS] (only if present in original)
+Certification Name | Issuer | Year
+
+━━━ OUTPUT FORMAT ━━━
+Plain text only. No markdown. No asterisks. No hashtags.
+Use • for bullet points.
+Use ALL CAPS for section headings.
+Output the complete resume now — do not truncate.
+
+━━━ ORIGINAL RESUME ━━━
 ${resumeText}
 
----
-
-JOB DESCRIPTION:
-${jobDescription}
-
----
-
-Output the fully rewritten ATS-optimized resume as plain text now:`,
+━━━ JOB DESCRIPTION ━━━
+${jobDescription}`,
         },
       ],
     });

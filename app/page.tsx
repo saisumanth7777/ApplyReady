@@ -263,8 +263,22 @@ export default function Home() {
                 <h2 className="text-xl font-semibold text-white">Resume Tailored Successfully!</h2>
               </div>
 
-              <div className="bg-slate-700/50 rounded-xl p-4 max-h-72 overflow-y-auto mb-4">
-                <pre className="text-slate-300 text-xs whitespace-pre-wrap font-mono">{tailoredText}</pre>
+              <div className="bg-white rounded-xl p-5 max-h-96 overflow-y-auto mb-4 text-left">
+                {tailoredText.split("\n").map((line, i) => {
+                  const trimmed = line.trim();
+                  if (!trimmed) return <div key={i} className="h-2" />;
+                  const isHeading = /^[A-Z][A-Z\s&\/]{4,}$/.test(trimmed);
+                  const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-");
+                  const isFirstLine = tailoredText.split("\n").findIndex(l => l.trim()) === i;
+                  if (isFirstLine) return <p key={i} className="text-center text-lg font-bold text-gray-900 mb-1">{trimmed}</p>;
+                  if (isHeading) return (
+                    <div key={i} className="mt-3 mb-1 border-b border-gray-300 pb-0.5">
+                      <span className="text-xs font-bold tracking-widest text-gray-700 uppercase">{trimmed}</span>
+                    </div>
+                  );
+                  if (isBullet) return <p key={i} className="text-xs text-gray-700 pl-3 py-0.5">{trimmed}</p>;
+                  return <p key={i} className="text-xs text-gray-600 py-0.5">{trimmed}</p>;
+                })}
               </div>
 
               <div className="flex gap-3">
