@@ -41,8 +41,15 @@ export default function Home() {
 
       const res = await fetch("/api/tailor", { method: "POST", body: formData });
       if (!res.ok) {
-        const { error: err } = await res.json();
-        throw new Error(err || "Something went wrong.");
+        let errMsg = `Server error (${res.status})`;
+        try {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } catch {
+          const text = await res.text();
+          errMsg = text.slice(0, 300) || errMsg;
+        }
+        throw new Error(errMsg);
       }
 
       const { tailoredResume } = await res.json();
