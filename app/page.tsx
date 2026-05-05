@@ -34,12 +34,17 @@ export default function Home() {
     setError("");
 
     try {
-      const formData = new FormData();
-      formData.append("resume", file);
-      formData.append("jobDescription", jobDescription);
-      formData.append("outputFormat", outputFormat);
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const resumeBase64 = btoa(binary);
 
-      const res = await fetch("/api/tailor", { method: "POST", body: formData });
+      const res = await fetch("/api/tailor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeBase64, fileName: file.name, fileType: file.type, jobDescription }),
+      });
       if (!res.ok) {
         let errMsg = `Server error (${res.status})`;
         try {

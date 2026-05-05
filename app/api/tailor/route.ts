@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -12,18 +13,16 @@ const mammoth = require("mammoth") as {
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-async function extractText(file: File): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+async function extractText(buffer: Buffer, fileName: string, fileType: string): Promise<string> {
+  if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
     const data = await pdfParse(buffer);
     return data.text;
   }
 
   if (
-    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    file.name.endsWith(".docx") ||
-    file.name.endsWith(".doc")
+    fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    fileName.endsWith(".docx") ||
+    fileName.endsWith(".doc")
   ) {
     const result = await mammoth.extractRawText({ buffer });
     return result.value;
@@ -34,19 +33,19 @@ async function extractText(file: File): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const resumeFile = formData.get("resume") as File | null;
-    const jobDescription = formData.get("jobDescription") as string;
+    const { resumeBase64, fileName, fileType, jobDescription } = await req.json();
 
-    if (!resumeFile || !jobDescription?.trim()) {
+    if (!resumeBase64 || !fileName || !jobDescription?.trim()) {
       return NextResponse.json({ error: "Resume file and job description are required." }, { status: 400 });
     }
 
-    if (resumeFile.size > 10 * 1024 * 1024) {
+    const buffer = Buffer.from(resumeBase64, "base64");
+
+    if (buffer.length > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "File too large. Maximum size is 10MB." }, { status: 400 });
     }
 
-    const resumeText = await extractText(resumeFile);
+    const resumeText = await extractText(buffer, fileName, fileType);
 
     if (!resumeText.trim()) {
       return NextResponse.json({ error: "Could not extract text from your resume. Please try a different file." }, { status: 400 });
