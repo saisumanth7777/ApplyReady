@@ -4,17 +4,18 @@ import Anthropic from "@anthropic-ai/sdk";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const mammoth = require("mammoth") as {
-  extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
-};
-
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function extractText(buffer: Buffer, fileName: string, fileType: string): Promise<string> {
   if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
+    // pdfjs-dist v4 requires DOMMatrix — polyfill it for Node.js
+    if (typeof (globalThis as Record<string, unknown>).DOMMatrix === "undefined") {
+      (globalThis as Record<string, unknown>).DOMMatrix = class DOMMatrix {
+        static fromMatrix() { return {}; }
+      };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
     const data = await pdfParse(buffer);
     return data.text;
   }
@@ -24,6 +25,10 @@ async function extractText(buffer: Buffer, fileName: string, fileType: string): 
     fileName.endsWith(".docx") ||
     fileName.endsWith(".doc")
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mammoth = require("mammoth") as {
+      extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
+    };
     const result = await mammoth.extractRawText({ buffer });
     return result.value;
   }
