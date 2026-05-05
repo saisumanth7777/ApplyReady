@@ -2,6 +2,35 @@
 
 import { useState, useRef } from "react";
 
+async function extractTextFromFile(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+
+  if (
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    file.name.toLowerCase().endsWith(".docx") ||
+    file.name.toLowerCase().endsWith(".doc")
+  ) {
+    // mammoth has a browser build — works client-side with ArrayBuffer
+    const mammoth = await import("mammoth");
+    const result = await (mammoth as unknown as { extractRawText: (o: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }> }).extractRawText({ arrayBuffer });
+    return result.value;
+  }
+
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const pages = await Promise.all(
+      Array.from({ length: pdf.numPages }, (_, i) =>
+        pdf.getPage(i + 1).then((p) => p.getTextContent().then((c) => c.items.map((it) => ("str" in it ? it.str : "")).join(" ")))
+      )
+    );
+    return pages.join("\n");
+  }
+
+  throw new Error("Unsupported file type. Please upload a PDF or DOCX.");
+}
+
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
@@ -34,31 +63,22 @@ export default function Home() {
     setError("");
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-      const resumeBase64 = btoa(binary);
+      const resumeText = await extractTextFromFile(file);
+
+      if (!resumeText.trim()) {
+        throw new Error("Could not read your resume. Please try a different file.");
+      }
 
       const res = await fetch("/api/tailor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeBase64, fileName: file.name, fileType: file.type, jobDescription }),
+        body: JSON.stringify({ resumeText, jobDescription }),
       });
-      if (!res.ok) {
-        let errMsg = `Server error (${res.status})`;
-        try {
-          const data = await res.json();
-          errMsg = data.error || errMsg;
-        } catch {
-          const text = await res.text();
-          errMsg = text.slice(0, 300) || errMsg;
-        }
-        throw new Error(errMsg);
-      }
 
-      const { tailoredResume } = await res.json();
-      setTailoredText(tailoredResume);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+
+      setTailoredText(data.tailoredResume);
       setStep("done");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -77,7 +97,6 @@ export default function Home() {
       if (!res.ok) throw new Error("Export failed.");
 
       if (outputFormat === "pdf") {
-        // Open print-ready HTML in new tab — user saves via Ctrl+P / Cmd+P → Save as PDF
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         window.open(url, "_blank");

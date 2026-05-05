@@ -6,54 +6,12 @@ export const maxDuration = 60;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-async function extractText(buffer: Buffer, fileName: string, fileType: string): Promise<string> {
-  if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
-    // pdfjs-dist v4 requires DOMMatrix — polyfill it for Node.js
-    if (typeof (globalThis as Record<string, unknown>).DOMMatrix === "undefined") {
-      (globalThis as Record<string, unknown>).DOMMatrix = class DOMMatrix {
-        static fromMatrix() { return {}; }
-      };
-    }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
-    const data = await pdfParse(buffer);
-    return data.text;
-  }
-
-  if (
-    fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    fileName.endsWith(".docx") ||
-    fileName.endsWith(".doc")
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mammoth = require("mammoth") as {
-      extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
-    };
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value;
-  }
-
-  throw new Error("Unsupported file type. Please upload a PDF or DOCX.");
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const { resumeBase64, fileName, fileType, jobDescription } = await req.json();
+    const { resumeText, jobDescription } = await req.json();
 
-    if (!resumeBase64 || !fileName || !jobDescription?.trim()) {
-      return NextResponse.json({ error: "Resume file and job description are required." }, { status: 400 });
-    }
-
-    const buffer = Buffer.from(resumeBase64, "base64");
-
-    if (buffer.length > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large. Maximum size is 10MB." }, { status: 400 });
-    }
-
-    const resumeText = await extractText(buffer, fileName, fileType);
-
-    if (!resumeText.trim()) {
-      return NextResponse.json({ error: "Could not extract text from your resume. Please try a different file." }, { status: 400 });
+    if (!resumeText?.trim() || !jobDescription?.trim()) {
+      return NextResponse.json({ error: "Resume text and job description are required." }, { status: 400 });
     }
 
     const message = await client.messages.create({
@@ -84,35 +42,32 @@ SECTION-BY-SECTION GUIDE:
 
 [NAME & CONTACT]
 Full name on first line. Contact on second line: Phone | Email | LinkedIn | City, State
-No graphics, photos, or icons.
 
 [PROFESSIONAL SUMMARY]
-3-4 punchy sentences. Mention: (1) years of experience + field, (2) the exact job title you're applying for, (3) 2-3 skills directly from the JD, (4) a key career achievement. Make it feel written for THIS job, not generic.
+3-4 punchy sentences. Mention: (1) years of experience + field, (2) the exact job title you're applying for, (3) 2-3 skills directly from the JD, (4) a key career achievement.
 
 [WORK EXPERIENCE]
 Format each role exactly as:
 Company Name | Job Title | Month Year – Month Year
 
-• Start every bullet with a past-tense action verb (Led, Built, Designed, Automated, Reduced, Grew, Delivered, Managed, etc.)
+• Start every bullet with a past-tense action verb
 • Include numbers wherever the original resume has them
 • Write 4-6 bullets per role, most JD-relevant first
 • Do NOT use "Responsible for" or "Helped with"
 
 [EDUCATION]
 Degree | Major | University | Year
-Include GPA only if 3.5+. Include relevant coursework only if it directly matches the JD.
 
 [SKILLS]
-Put JD-matched skills first. Group logically (e.g. Languages: Python, SQL | Frameworks: React, Node.js | Tools: Git, Docker)
+Put JD-matched skills first. Group logically.
 
 [CERTIFICATIONS] (only if present in original)
-Certification Name | Issuer | Year
 
 ━━━ OUTPUT FORMAT ━━━
 Plain text only. No markdown. No asterisks. No hashtags.
 Use • for bullet points.
 Use ALL CAPS for section headings.
-Output the complete resume now — do not truncate.
+Output the complete resume — do not truncate.
 
 ━━━ ORIGINAL RESUME ━━━
 ${resumeText}
