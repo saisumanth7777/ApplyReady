@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 8096,
       system: `You are an elite resume writer and career coach with 20+ years of experience helping candidates land roles at top companies. You are an expert in ATS systems, recruiter psychology, and crafting resumes that get interviews. You write with precision — every word earns its place.`,
       messages: [
