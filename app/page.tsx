@@ -67,7 +67,7 @@ export default function LandingPage() {
         <p className="text-slate-400 text-center mb-14">Built for the modern job search.</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: "🤖", title: "Claude AI", desc: "Powered by Anthropic's Claude — one of the most capable AI models for writing." },
+            { icon: "🤖", title: "Advanced AI", desc: "Powered by one of the most capable AI models available — built for precision writing." },
             { icon: "📊", title: "ATS-Optimized", desc: "Mirrors the exact keywords recruiters' ATS systems scan for. More interviews, less ghosting." },
             { icon: "⚡", title: "30 seconds", desc: "Faster than any human resume writer. Apply to more jobs, faster." },
             { icon: "🔒", title: "Private by default", desc: "Your resume is never stored. Processed in real-time and gone." },
@@ -136,7 +136,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-800 py-8 px-6 text-center text-slate-600 text-sm">
-        <p>© 2025 ApplyReady · Built with Claude AI by Anthropic · Your resume is never stored.</p>
+        <p>© 2025 ApplyReady · Your resume is never stored.</p>
       </footer>
 
     </main>

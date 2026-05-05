@@ -64,7 +64,7 @@ Put JD-matched skills first. Group logically.
 [CERTIFICATIONS] (only if present in original)
 
 ━━━ OUTPUT FORMAT ━━━
-Plain text only. No markdown. No asterisks. No hashtags.
+Plain text only. Absolutely NO markdown — no #, no **, no *, no hashtags, no backticks.
 Use • for bullet points.
 Use ALL CAPS for section headings.
 Output the complete resume — do not truncate.

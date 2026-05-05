@@ -262,7 +262,7 @@ export default function Home() {
               <div className="text-5xl mb-4 animate-bounce">✨</div>
               <h2 className="text-xl font-semibold text-white mb-2">Tailoring your resume...</h2>
               <p className="text-slate-400 text-sm">
-                Claude is rewriting your resume to match the job description and ATS requirements.
+                AI is rewriting your resume to match the job description and ATS requirements.
               </p>
               <div className="mt-6 flex justify-center gap-1.5">
                 {[0, 1, 2].map((i) => (
@@ -293,7 +293,8 @@ export default function Home() {
                   const isHeading = /^[A-Z][A-Z\s&\/]{4,}$/.test(trimmed);
                   const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-");
                   const isFirstLine = tailoredText.split("\n").findIndex(l => l.trim()) === i;
-                  if (isFirstLine) return <p key={i} className="text-center text-lg font-bold text-gray-900 mb-1">{trimmed}</p>;
+                  const cleanLine = trimmed.replace(/^#+\s*/, "");
+                  if (isFirstLine) return <p key={i} className="text-center text-lg font-bold text-gray-900 mb-1">{cleanLine}</p>;
                   if (isHeading) return (
                     <div key={i} className="mt-3 mb-1 border-b border-gray-300 pb-0.5">
                       <span className="text-xs font-bold tracking-widest text-gray-700 uppercase">{trimmed}</span>
@@ -320,7 +321,7 @@ export default function Home() {
               </div>
 
               <p className="text-slate-500 text-xs text-center mt-3">
-                Processed by Claude AI (Anthropic) · Your resume is not stored
+                Processed by AI · Your resume is not stored
               </p>
             </div>
           )}
