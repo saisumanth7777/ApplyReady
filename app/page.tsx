@@ -97,7 +97,7 @@ export default function Home() {
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">ResumeFit</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">ApplyReady</h1>
           <p className="text-slate-400">
             Upload your resume, paste a job description — get an ATS-optimized resume in seconds.
           </p>
