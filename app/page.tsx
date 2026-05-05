@@ -1,331 +1,144 @@
-"use client";
+import Link from "next/link";
 
-import { useState, useRef } from "react";
-
-async function extractTextFromFile(file: File): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-
-  if (
-    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    file.name.toLowerCase().endsWith(".docx") ||
-    file.name.toLowerCase().endsWith(".doc")
-  ) {
-    // mammoth has a browser build — works client-side with ArrayBuffer
-    const mammoth = await import("mammoth");
-    const result = await (mammoth as unknown as { extractRawText: (o: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }> }).extractRawText({ arrayBuffer });
-    return result.value;
-  }
-
-  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-    const pdfjs = await import("pdfjs-dist");
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-    const pages = await Promise.all(
-      Array.from({ length: pdf.numPages }, (_, i) =>
-        pdf.getPage(i + 1).then((p) => p.getTextContent().then((c) => c.items.map((it) => ("str" in it ? it.str : "")).join(" ")))
-      )
-    );
-    return pages.join("\n");
-  }
-
-  throw new Error("Unsupported file type. Please upload a PDF or DOCX.");
-}
-
-export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState("");
-  const [outputFormat, setOutputFormat] = useState<"pdf" | "docx">("pdf");
-  const [step, setStep] = useState<"upload" | "jd" | "loading" | "done">("upload");
-  const [tailoredText, setTailoredText] = useState("");
-  const [error, setError] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const ok =
-      f.type === "application/pdf" ||
-      f.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-      f.name.endsWith(".doc") ||
-      f.name.endsWith(".docx");
-    if (!ok) {
-      setError("Only PDF or DOCX files are supported.");
-      return;
-    }
-    setError("");
-    setFile(f);
-    setStep("jd");
-  };
-
-  const handleTailor = async () => {
-    if (!file || !jobDescription.trim()) return;
-    setStep("loading");
-    setError("");
-
-    try {
-      const resumeText = await extractTextFromFile(file);
-
-      if (!resumeText.trim()) {
-        throw new Error("Could not read your resume. Please try a different file.");
-      }
-
-      const res = await fetch("/api/tailor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText, jobDescription }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
-
-      setTailoredText(data.tailoredResume);
-      setStep("done");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-      setStep("jd");
-    }
-  };
-
-  const handleDownload = async () => {
-    setError("");
-    try {
-      const res = await fetch("/api/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: tailoredText, format: outputFormat }),
-      });
-      if (!res.ok) throw new Error("Export failed.");
-
-      if (outputFormat === "pdf") {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, "_blank");
-      } else {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `tailored-resume.docx`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Export failed.");
-    }
-  };
-
-  const reset = () => {
-    setFile(null);
-    setJobDescription("");
-    setTailoredText("");
-    setError("");
-    setStep("upload");
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
+export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">ApplyReady</h1>
-          <p className="text-slate-400">
-            Upload your resume, paste a job description — get an ATS-optimized resume in seconds.
-          </p>
+    <main className="min-h-screen bg-slate-900 text-white">
+
+      {/* Nav */}
+      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
+        <span className="text-xl font-bold text-white">ApplyReady</span>
+        <Link
+          href="/tailor"
+          className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
+        >
+          Try Free →
+        </Link>
+      </nav>
+
+      {/* Hero */}
+      <section className="text-center px-6 pt-20 pb-24 max-w-4xl mx-auto">
+        <div className="inline-block bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-6 tracking-wide uppercase">
+          AI-Powered · ATS-Optimized
         </div>
-
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {["Upload", "Job Description", "Download"].map((label, i) => {
-            const stepIndex = ["upload", "jd", "done"].indexOf(step);
-            const active = i <= (step === "loading" ? 1 : stepIndex);
-            return (
-              <div key={label} className="flex items-center gap-2">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                    active ? "bg-indigo-500 text-white" : "bg-slate-700 text-slate-400"
-                  }`}
-                >
-                  {i + 1}
-                </div>
-                <span className={`text-sm hidden sm:block ${active ? "text-white" : "text-slate-500"}`}>
-                  {label}
-                </span>
-                {i < 2 && (
-                  <div
-                    className={`w-8 h-0.5 ${
-                      i < stepIndex || (i === 1 && step === "loading")
-                        ? "bg-indigo-500"
-                        : "bg-slate-700"
-                    }`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
-          {/* Error Banner */}
-          {error && (
-            <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Step 1: Upload */}
-          {step === "upload" && (
-            <div>
-              <h2 className="text-xl font-semibold text-white mb-4">Upload Your Resume</h2>
-              <div
-                onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-10 text-center cursor-pointer transition-colors group"
-              >
-                <div className="text-4xl mb-3">📄</div>
-                <p className="text-slate-300 group-hover:text-white transition-colors font-medium">
-                  Click to upload your resume
-                </p>
-                <p className="text-slate-500 text-sm mt-1">PDF or DOCX · Max 10MB</p>
-              </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.doc,.docx"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </div>
-          )}
-
-          {/* Step 2: Job Description */}
-          {step === "jd" && (
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-indigo-500/20 rounded-lg px-3 py-1.5">
-                  <span className="text-indigo-300 text-sm font-medium">📄 {file?.name}</span>
-                </div>
-                <button
-                  onClick={reset}
-                  className="text-slate-500 hover:text-slate-300 text-sm transition-colors"
-                >
-                  Change file
-                </button>
-              </div>
-
-              <h2 className="text-xl font-semibold text-white mb-3">Paste the Job Description</h2>
-              <textarea
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the full job description here..."
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl p-4 text-slate-200 placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-indigo-500 transition-colors"
-                rows={8}
-              />
-
-              <div className="flex items-center gap-4 mt-4">
-                <div>
-                  <p className="text-slate-400 text-sm mb-2">Output format</p>
-                  <div className="flex gap-2">
-                    {(["pdf", "docx"] as const).map((fmt) => (
-                      <button
-                        key={fmt}
-                        onClick={() => setOutputFormat(fmt)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          outputFormat === fmt
-                            ? "bg-indigo-500 text-white"
-                            : "bg-slate-700 text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        {fmt.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleTailor}
-                  disabled={!jobDescription.trim()}
-                  className="ml-auto bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
-                >
-                  Tailor My Resume →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Loading */}
-          {step === "loading" && (
-            <div className="text-center py-12">
-              <div className="text-5xl mb-4 animate-bounce">✨</div>
-              <h2 className="text-xl font-semibold text-white mb-2">Tailoring your resume...</h2>
-              <p className="text-slate-400 text-sm">
-                Claude is rewriting your resume to match the job description and ATS requirements.
-              </p>
-              <div className="mt-6 flex justify-center gap-1.5">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Done */}
-          {step === "done" && (
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                  ✓
-                </div>
-                <h2 className="text-xl font-semibold text-white">Resume Tailored Successfully!</h2>
-              </div>
-
-              <div className="bg-white rounded-xl p-5 max-h-96 overflow-y-auto mb-4 text-left">
-                {tailoredText.split("\n").map((line, i) => {
-                  const trimmed = line.trim();
-                  if (!trimmed) return <div key={i} className="h-2" />;
-                  const isHeading = /^[A-Z][A-Z\s&\/]{4,}$/.test(trimmed);
-                  const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-");
-                  const isFirstLine = tailoredText.split("\n").findIndex(l => l.trim()) === i;
-                  if (isFirstLine) return <p key={i} className="text-center text-lg font-bold text-gray-900 mb-1">{trimmed}</p>;
-                  if (isHeading) return (
-                    <div key={i} className="mt-3 mb-1 border-b border-gray-300 pb-0.5">
-                      <span className="text-xs font-bold tracking-widest text-gray-700 uppercase">{trimmed}</span>
-                    </div>
-                  );
-                  if (isBullet) return <p key={i} className="text-xs text-gray-700 pl-3 py-0.5">{trimmed}</p>;
-                  return <p key={i} className="text-xs text-gray-600 py-0.5">{trimmed}</p>;
-                })}
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={handleDownload}
-                  className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 rounded-xl transition-colors"
-                >
-                  Download {outputFormat.toUpperCase()} ↓
-                </button>
-                <button
-                  onClick={reset}
-                  className="px-5 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-colors text-sm"
-                >
-                  Start Over
-                </button>
-              </div>
-
-              <p className="text-slate-500 text-xs text-center mt-3">
-                Processed by Claude AI (Anthropic) · Your resume is not stored
-              </p>
-            </div>
-          )}
-        </div>
-
-        <p className="text-center text-slate-600 text-xs mt-4">
-          Built for students &amp; job seekers · ATS-optimized output
+        <h1 className="text-5xl sm:text-6xl font-extrabold text-white leading-tight mb-6">
+          Your resume,{" "}
+          <span className="text-indigo-400">tailored</span>{" "}
+          for every job.
+        </h1>
+        <p className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10">
+          Upload your resume, paste a job description — ApplyReady rewrites it to match the role and beat ATS filters. In seconds.
         </p>
-      </div>
+        <Link
+          href="/tailor"
+          className="inline-block bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-lg px-10 py-4 rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+        >
+          Tailor My Resume Free →
+        </Link>
+        <p className="text-slate-600 text-sm mt-4">No sign-up needed · Takes 30 seconds</p>
+      </section>
+
+      {/* How it works */}
+      <section className="bg-slate-800/50 border-y border-slate-700/50 py-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">How it works</h2>
+          <p className="text-slate-400 text-center mb-14">Three steps. Thirty seconds.</p>
+          <div className="grid sm:grid-cols-3 gap-8">
+            {[
+              { step: "1", icon: "📄", title: "Upload your resume", desc: "Drop in your current resume — PDF or DOCX. We never store your file." },
+              { step: "2", icon: "📋", title: "Paste the job description", desc: "Copy the full job posting and paste it in. The more detail, the better the match." },
+              { step: "3", icon: "✅", title: "Download your new resume", desc: "Claude AI rewrites your resume to mirror the JD keywords and pass ATS scanners." },
+            ].map(({ step, icon, title, desc }) => (
+              <div key={step} className="text-center">
+                <div className="w-14 h-14 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4">
+                  {icon}
+                </div>
+                <div className="text-indigo-400 text-xs font-bold uppercase tracking-widest mb-2">Step {step}</div>
+                <h3 className="text-white font-semibold text-lg mb-2">{title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why ApplyReady */}
+      <section className="py-20 px-6 max-w-5xl mx-auto">
+        <h2 className="text-3xl font-bold text-center mb-3">Why ApplyReady?</h2>
+        <p className="text-slate-400 text-center mb-14">Built for the modern job search.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { icon: "🤖", title: "Claude AI", desc: "Powered by Anthropic's Claude — one of the most capable AI models for writing." },
+            { icon: "📊", title: "ATS-Optimized", desc: "Mirrors the exact keywords recruiters' ATS systems scan for. More interviews, less ghosting." },
+            { icon: "⚡", title: "30 seconds", desc: "Faster than any human resume writer. Apply to more jobs, faster." },
+            { icon: "🔒", title: "Private by default", desc: "Your resume is never stored. Processed in real-time and gone." },
+            { icon: "📝", title: "PDF & DOCX export", desc: "Download your tailored resume in whatever format the job posting asks for." },
+            { icon: "🎯", title: "Role-specific", desc: "Every resume is uniquely rewritten for that specific job — not a generic tweak." },
+          ].map(({ icon, title, desc }) => (
+            <div key={title} className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <div className="text-3xl mb-3">{icon}</div>
+              <h3 className="text-white font-semibold mb-2">{title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="bg-slate-800/50 border-y border-slate-700/50 py-20 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-3">Simple pricing</h2>
+          <p className="text-slate-400 mb-12">Start free. Upgrade when you're ready.</p>
+          <div className="grid sm:grid-cols-2 gap-6 text-left">
+            {/* Free */}
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8">
+              <div className="text-slate-400 text-sm font-semibold uppercase tracking-widest mb-2">Free</div>
+              <div className="text-4xl font-extrabold text-white mb-1">$0</div>
+              <div className="text-slate-500 text-sm mb-6">forever</div>
+              <ul className="space-y-3 text-sm text-slate-300">
+                {["3 tailored resumes", "PDF & DOCX export", "ATS optimization", "No sign-up required"].map((f) => (
+                  <li key={f} className="flex items-center gap-2"><span className="text-green-400">✓</span>{f}</li>
+                ))}
+              </ul>
+              <Link href="/tailor" className="block text-center mt-8 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition-colors">
+                Get Started Free
+              </Link>
+            </div>
+            {/* Pro */}
+            <div className="bg-indigo-500/10 border border-indigo-500/40 rounded-2xl p-8 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-4 py-1 rounded-full">BEST VALUE</div>
+              <div className="text-indigo-400 text-sm font-semibold uppercase tracking-widest mb-2">Pro</div>
+              <div className="text-4xl font-extrabold text-white mb-1">$12</div>
+              <div className="text-slate-500 text-sm mb-6">per month</div>
+              <ul className="space-y-3 text-sm text-slate-300">
+                {["Unlimited tailored resumes", "PDF & DOCX export", "ATS optimization", "Priority processing", "Cover letter generator (soon)"].map((f) => (
+                  <li key={f} className="flex items-center gap-2"><span className="text-green-400">✓</span>{f}</li>
+                ))}
+              </ul>
+              <Link href="/tailor" className="block text-center mt-8 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 rounded-xl transition-colors">
+                Start Free Trial
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="text-center py-24 px-6">
+        <h2 className="text-4xl font-extrabold mb-4">Ready to get more interviews?</h2>
+        <p className="text-slate-400 text-lg mb-8">Join job seekers using ApplyReady to stand out in every application.</p>
+        <Link
+          href="/tailor"
+          className="inline-block bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-lg px-10 py-4 rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+        >
+          Tailor My Resume Free →
+        </Link>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-800 py-8 px-6 text-center text-slate-600 text-sm">
+        <p>© 2025 ApplyReady · Built with Claude AI by Anthropic · Your resume is never stored.</p>
+      </footer>
+
     </main>
   );
 }
