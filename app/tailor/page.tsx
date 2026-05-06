@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { UserButton, useUser } from "@clerk/nextjs";
+import { FREE_TAILOR_LIMIT } from "@/lib/constants";
 
 async function extractTextFromFile(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
@@ -44,8 +45,7 @@ export default function Home() {
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
   const tailorCount = (user?.publicMetadata?.tailorCount as number) || 0;
-  const FREE_LIMIT = 3;
-  const remaining = Math.max(0, FREE_LIMIT - tailorCount);
+  const remaining = Math.max(0, FREE_TAILOR_LIMIT - tailorCount);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -91,8 +91,8 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
 
       setTailoredText(data.tailoredResume);
-      await user?.reload();
       setStep("done");
+      user?.reload();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
       setStep("jd");
@@ -329,22 +329,25 @@ export default function Home() {
               </div>
 
               <div className="bg-white rounded-xl p-5 max-h-96 overflow-y-auto mb-4 text-left">
-                {tailoredText.split("\n").map((line, i) => {
-                  const trimmed = line.trim();
-                  if (!trimmed) return <div key={i} className="h-2" />;
-                  const isHeading = /^[A-Z][A-Z\s&\/]{4,}$/.test(trimmed);
-                  const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-");
-                  const isFirstLine = tailoredText.split("\n").findIndex(l => l.trim()) === i;
-                  const cleanLine = trimmed.replace(/^#+\s*/, "");
-                  if (isFirstLine) return <p key={i} className="text-center text-lg font-bold text-gray-900 mb-1">{cleanLine}</p>;
-                  if (isHeading) return (
-                    <div key={i} className="mt-3 mb-1 border-b border-gray-300 pb-0.5">
-                      <span className="text-xs font-bold tracking-widest text-gray-700 uppercase">{trimmed}</span>
-                    </div>
-                  );
-                  if (isBullet) return <p key={i} className="text-xs text-gray-700 pl-3 py-0.5">{trimmed}</p>;
-                  return <p key={i} className="text-xs text-gray-600 py-0.5">{trimmed}</p>;
-                })}
+                {(() => {
+                  const lines = tailoredText.split("\n");
+                  const firstLineIndex = lines.findIndex(l => l.trim());
+                  return lines.map((line, i) => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return <div key={i} className="h-2" />;
+                    const isHeading = /^[A-Z][A-Z\s&\/]{4,}$/.test(trimmed);
+                    const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-");
+                    const cleanLine = trimmed.replace(/^#+\s*/, "");
+                    if (i === firstLineIndex) return <p key={i} className="text-center text-lg font-bold text-gray-900 mb-1">{cleanLine}</p>;
+                    if (isHeading) return (
+                      <div key={i} className="mt-3 mb-1 border-b border-gray-300 pb-0.5">
+                        <span className="text-xs font-bold tracking-widest text-gray-700 uppercase">{trimmed}</span>
+                      </div>
+                    );
+                    if (isBullet) return <p key={i} className="text-xs text-gray-700 pl-3 py-0.5">{trimmed}</p>;
+                    return <p key={i} className="text-xs text-gray-600 py-0.5">{trimmed}</p>;
+                  });
+                })()}
               </div>
 
               <div className="flex gap-3">
