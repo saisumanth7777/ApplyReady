@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
@@ -35,7 +35,7 @@ async function extractTextFromFile(file: File): Promise<string> {
   throw new Error("Unsupported file type. Please upload a PDF or DOCX.");
 }
 
-export default function Home() {
+function TailorPage() {
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [outputFormat, setOutputFormat] = useState<"pdf" | "docx">("pdf");
@@ -400,5 +400,13 @@ export default function Home() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <TailorPage />
+    </Suspense>
   );
 }
