@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 async function extractTextFromFile(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
@@ -40,7 +40,12 @@ export default function Home() {
   const [step, setStep] = useState<"upload" | "jd" | "loading" | "done">("upload");
   const [tailoredText, setTailoredText] = useState("");
   const [error, setError] = useState("");
+  const [limitReached, setLimitReached] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useUser();
+  const tailorCount = (user?.publicMetadata?.tailorCount as number) || 0;
+  const FREE_LIMIT = 3;
+  const remaining = Math.max(0, FREE_LIMIT - tailorCount);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -78,9 +83,15 @@ export default function Home() {
       });
 
       const data = await res.json();
+      if (res.status === 403 && data.limitReached) {
+        setLimitReached(true);
+        setStep("jd");
+        return;
+      }
       if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
 
       setTailoredText(data.tailoredResume);
+      await user?.reload();
       setStep("done");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -140,7 +151,34 @@ export default function Home() {
           <p className="text-slate-400">
             Upload your resume, paste a job description — get an ATS-optimized resume in seconds.
           </p>
+          <div className="mt-3">
+            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${remaining === 0 ? "bg-red-500/20 text-red-400" : "bg-indigo-500/20 text-indigo-400"}`}>
+              {remaining === 0 ? "Free limit reached" : `${remaining} free tailor${remaining === 1 ? "" : "s"} remaining`}
+            </span>
+          </div>
         </div>
+
+        {/* Upgrade Modal */}
+        {limitReached && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
+              <div className="text-5xl mb-4">🚀</div>
+              <h2 className="text-2xl font-bold text-white mb-2">You&apos;ve used your 3 free tailors</h2>
+              <p className="text-slate-400 mb-6">Upgrade to Pro for unlimited resume tailoring, cover letters, and more.</p>
+              <div className="bg-slate-700/50 rounded-xl p-4 mb-6 text-left space-y-2">
+                {["Unlimited tailored resumes", "PDF & DOCX export", "Cover letter generator (soon)", "Cancel anytime"].map((f) => (
+                  <p key={f} className="text-sm text-slate-300 flex items-center gap-2"><span className="text-green-400">✓</span>{f}</p>
+                ))}
+              </div>
+              <button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-colors mb-3">
+                Upgrade to Pro — $12/month
+              </button>
+              <button onClick={() => setLimitReached(false)} className="text-slate-500 hover:text-slate-300 text-sm transition-colors">
+                Maybe later
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-2 mb-8">

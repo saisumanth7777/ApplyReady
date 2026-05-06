@@ -1,13 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+const FREE_LIMIT = 3;
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const clerk = await clerkClient();
+    const user = await clerk.users.getUser(userId);
+    const tailorCount = (user.publicMetadata.tailorCount as number) || 0;
+
+    if (tailorCount >= FREE_LIMIT) {
+      return NextResponse.json({ error: "Free limit reached", limitReached: true }, { status: 403 });
+    }
+
     const { resumeText, jobDescription } = await req.json();
 
     if (!resumeText?.trim() || !jobDescription?.trim()) {
@@ -83,7 +98,11 @@ ${jobDescription}`,
       .map((block) => block.text)
       .join("\n");
 
-    return NextResponse.json({ tailoredResume });
+    await clerk.users.updateUserMetadata(userId, {
+      publicMetadata: { tailorCount: tailorCount + 1 },
+    });
+
+    return NextResponse.json({ tailoredResume, usageCount: tailorCount + 1, freeLimit: FREE_LIMIT });
   } catch (error: unknown) {
     console.error("Tailor API error:", error);
     const message = error instanceof Error ? error.message : "An unexpected error occurred.";
