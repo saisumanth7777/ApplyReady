@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { FREE_TAILOR_LIMIT } from "@/lib/constants";
 
@@ -46,6 +47,11 @@ export default function Home() {
   const { user } = useUser();
   const tailorCount = (user?.publicMetadata?.tailorCount as number) || 0;
   const remaining = Math.max(0, FREE_TAILOR_LIMIT - tailorCount);
+  const searchParams = useSearchParams();
+  const [upgraded, setUpgraded] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("upgraded") === "true") setUpgraded(true);
+  }, [searchParams]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -62,6 +68,16 @@ export default function Home() {
     setError("");
     setFile(f);
     setStep("jd");
+  };
+
+  const handleUpgrade = async () => {
+    try {
+      const res = await fetch("/api/stripe", { method: "POST" });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      setError("Failed to start checkout. Please try again.");
+    }
   };
 
   const handleTailor = async () => {
@@ -158,6 +174,13 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Upgrade Success Banner */}
+        {upgraded && (
+          <div className="mb-6 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl px-5 py-4 text-sm text-center font-medium">
+            You&apos;re now on Pro! Unlimited resume tailoring unlocked.
+          </div>
+        )}
+
         {/* Upgrade Modal */}
         {limitReached && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -170,7 +193,7 @@ export default function Home() {
                   <p key={f} className="text-sm text-slate-300 flex items-center gap-2"><span className="text-green-400">✓</span>{f}</p>
                 ))}
               </div>
-              <button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-colors mb-3">
+              <button onClick={handleUpgrade} className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-colors mb-3">
                 Upgrade to Pro — $12/month
               </button>
               <button onClick={() => setLimitReached(false)} className="text-slate-500 hover:text-slate-300 text-sm transition-colors">

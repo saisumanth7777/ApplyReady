@@ -16,9 +16,10 @@ export async function POST(req: NextRequest) {
 
     const clerk = await clerkClient();
     const user = await clerk.users.getUser(userId);
+    const isPro = (user.publicMetadata.isPro as boolean) || false;
     const tailorCount = (user.publicMetadata.tailorCount as number) || 0;
 
-    if (tailorCount >= FREE_TAILOR_LIMIT) {
+    if (!isPro && tailorCount >= FREE_TAILOR_LIMIT) {
       return NextResponse.json({ error: "Free limit reached", limitReached: true }, { status: 403 });
     }
 
