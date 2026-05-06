@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 
 async function extractTextFromFile(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
@@ -129,9 +130,12 @@ export default function Home() {
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="text-slate-500 hover:text-slate-300 text-sm transition-colors block mb-4">
-            ← Back to home
-          </Link>
+          <div className="flex items-center justify-between mb-4">
+            <Link href="/" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">
+              ← Back to home
+            </Link>
+            <UserButton />
+          </div>
           <h1 className="text-4xl font-bold text-white mb-2">ApplyReady</h1>
           <p className="text-slate-400">
             Upload your resume, paste a job description — get an ATS-optimized resume in seconds.
