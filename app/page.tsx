@@ -120,22 +120,22 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-3 gap-6">
             {[
               {
-                name: "Marcus T.",
-                role: "Software Engineer",
+                name: "Chandu T.",
+                role: "SAP-SECURITY ",
                 avatar: "MT",
-                text: "I was applying for months with no callbacks. After using ApplyReady I got 3 interview calls in the first week. The tailored resume made a huge difference.",
+                text: "With ApplyReady its always fast and efficient to get the resume . The tailored resume made a huge difference.",
               },
               {
-                name: "Priya S.",
+                name: " Sai",
                 role: "Product Manager",
                 avatar: "PS",
                 text: "I didn't realize how generic my resume was until I saw the before/after. It took 30 seconds and my resume went from good to perfectly matched for the role.",
               },
               {
-                name: "James R.",
+                name: "Nithin B.",
                 role: "Data Analyst",
                 avatar: "JR",
-                text: "Resume-now charged me $36 and gave me a template. ApplyReady actually rewrote my resume for the specific job. No contest — this is the better product.",
+                text: " ApplyReady actually rewrote my resume for the specific job. No contest — this is the better product.",
               },
             ].map(({ name, role, avatar, text }) => (
               <div key={name} className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
