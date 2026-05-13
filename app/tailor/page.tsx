@@ -44,6 +44,8 @@ function TailorPage() {
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
   const [mismatchWarning, setMismatchWarning] = useState("");
+  const [upgradeError, setUpgradeError] = useState("");
+  const [upgrading, setUpgrading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
   const tailorCount = (user?.publicMetadata?.tailorCount as number) || 0;
@@ -72,12 +74,20 @@ function TailorPage() {
   };
 
   const handleUpgrade = async () => {
+    setUpgrading(true);
+    setUpgradeError("");
     try {
       const res = await fetch("/api/stripe", { method: "POST" });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setUpgradeError(data.error || "Could not start checkout. Please try again.");
+      }
     } catch {
-      setError("Failed to start checkout. Please try again.");
+      setUpgradeError("Network error. Please check your connection and try again.");
+    } finally {
+      setUpgrading(false);
     }
   };
 
@@ -196,8 +206,17 @@ function TailorPage() {
                   <p key={f} className="text-sm text-slate-300 flex items-center gap-2"><span className="text-green-400">✓</span>{f}</p>
                 ))}
               </div>
-              <button onClick={handleUpgrade} className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-colors mb-3">
-                Upgrade to Pro — $12/month
+              {upgradeError && (
+                <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
+                  {upgradeError}
+                </div>
+              )}
+              <button
+                onClick={handleUpgrade}
+                disabled={upgrading}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors mb-3"
+              >
+                {upgrading ? "Redirecting to checkout..." : "Upgrade to Pro — $12/month"}
               </button>
               <button onClick={() => setLimitReached(false)} className="text-slate-500 hover:text-slate-300 text-sm transition-colors">
                 Maybe later
