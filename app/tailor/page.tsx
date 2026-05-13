@@ -43,6 +43,7 @@ function TailorPage() {
   const [tailoredText, setTailoredText] = useState("");
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
+  const [mismatchWarning, setMismatchWarning] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
   const tailorCount = (user?.publicMetadata?.tailorCount as number) || 0;
@@ -107,6 +108,7 @@ function TailorPage() {
       if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
 
       setTailoredText(data.tailoredResume);
+      if (data.mismatch && data.warning) setMismatchWarning(data.warning);
       setStep("done");
       user?.reload();
     } catch (e: unknown) {
@@ -148,6 +150,7 @@ function TailorPage() {
     setJobDescription("");
     setTailoredText("");
     setError("");
+    setMismatchWarning("");
     setStep("upload");
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -350,6 +353,17 @@ function TailorPage() {
                 </div>
                 <h2 className="text-xl font-semibold text-white">Resume Tailored Successfully!</h2>
               </div>
+
+              {mismatchWarning && (
+                <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+                  <span className="text-yellow-400 text-lg mt-0.5">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-yellow-300 text-sm font-medium mb-1">Skill gap detected</p>
+                    <p className="text-yellow-400/80 text-xs">{mismatchWarning}</p>
+                  </div>
+                  <button onClick={() => setMismatchWarning("")} className="text-yellow-600 hover:text-yellow-400 text-lg leading-none">×</button>
+                </div>
+              )}
 
               <div className="bg-white rounded-xl p-5 max-h-96 overflow-y-auto mb-4 text-left">
                 {(() => {

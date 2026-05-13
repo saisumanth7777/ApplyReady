@@ -38,16 +38,22 @@ export async function POST(req: NextRequest) {
           role: "user",
           content: `Tailor the resume below for the job description provided. Follow every instruction exactly.
 
-━━━ STEP 1: SILENTLY ANALYZE (do not output this) ━━━
-- What are the top 5 must-have skills/keywords from the JD?
-- What experience in the resume maps to those requirements?
-- What measurable achievements can be emphasized?
-- What job title and seniority level is the role?
+━━━ STEP 1: MISMATCH CHECK (output this first) ━━━
+On the very first line output either:
+MISMATCH:NO
+or
+MISMATCH:YES
+If MISMATCH:YES, on the second line output:
+WARNING:<one sentence explaining the main gap>
+
+A mismatch means the resume is missing more than half the core required skills from the JD.
+Even if there is a mismatch, ALWAYS continue and produce the full tailored resume below.
 
 ━━━ STEP 2: REWRITE THE RESUME ━━━
 
 STRICT RULES:
 • NEVER invent jobs, degrees, skills, or numbers not in the original resume
+• ALWAYS produce a complete tailored resume — never refuse, never truncate
 • Every bullet point = strong action verb + what you did + measurable result (if available)
 • Mirror the JD's exact keywords and phrases naturally — ATS needs exact matches
 • Reorder bullets within each job to put the most JD-relevant ones first
@@ -93,10 +99,26 @@ ${jobDescription}`,
       ],
     });
 
-    const tailoredResume = message.content
+    const fullText = message.content
       .filter((block) => block.type === "text")
       .map((block) => block.text)
       .join("\n");
+
+    const lines = fullText.split("\n");
+    let mismatch = false;
+    let warning = "";
+    let resumeStart = 0;
+
+    if (lines[0]?.startsWith("MISMATCH:")) {
+      mismatch = lines[0].trim() === "MISMATCH:YES";
+      resumeStart = 1;
+      if (mismatch && lines[1]?.startsWith("WARNING:")) {
+        warning = lines[1].replace("WARNING:", "").trim();
+        resumeStart = 2;
+      }
+    }
+
+    const tailoredResume = lines.slice(resumeStart).join("\n").trim();
 
     try {
       await clerk.users.updateUserMetadata(userId, {
@@ -106,7 +128,7 @@ ${jobDescription}`,
       console.error("Failed to update usage count:", metaErr);
     }
 
-    return NextResponse.json({ tailoredResume });
+    return NextResponse.json({ tailoredResume, mismatch, warning });
   } catch (error: unknown) {
     console.error("Tailor API error:", error);
     const message = error instanceof Error ? error.message : "An unexpected error occurred.";
