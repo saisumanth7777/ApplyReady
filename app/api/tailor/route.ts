@@ -30,65 +30,52 @@ export async function POST(req: NextRequest) {
     }
 
     const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-6",
       max_tokens: 8096,
-      system: `You are an elite resume writer and career coach with 20+ years of experience helping candidates land roles at top companies. You are an expert in ATS systems, recruiter psychology, and crafting resumes that get interviews. You write with precision — every word earns its place.`,
+      system: `You are an elite resume writer and ATS expert. You rewrite resumes so they land interviews. You are aggressive about matching job description language — you rephrase the candidate's real experience using the JD's exact words and phrases. You never invent experience, but you always find the best angle to present what exists.`,
       messages: [
         {
           role: "user",
-          content: `Tailor the resume below for the job description provided. Follow every instruction exactly.
+          content: `Tailor the resume below for the job description. Follow every instruction exactly and completely.
 
-━━━ STEP 1: MISMATCH CHECK (output this first) ━━━
-On the very first line output either:
+━━━ STEP 1: MISMATCH CHECK (output this first, one line only) ━━━
+Output exactly one of these as the very first line:
 MISMATCH:NO
-or
 MISMATCH:YES
-If MISMATCH:YES, on the second line output:
-WARNING:<one sentence explaining the main gap>
+If MISMATCH:YES, output on the second line: WARNING:<one sentence on the main skill gap>
+Even on mismatch, ALWAYS produce the full resume below. Never refuse.
 
-A mismatch means the resume is missing more than half the core required skills from the JD.
-Even if there is a mismatch, ALWAYS continue and produce the full tailored resume below.
+━━━ STEP 2: EXTRACT JD KEYWORDS (silent — do not output) ━━━
+Identify the top 8-10 must-have keywords/phrases from the JD.
+These MUST appear verbatim in the rewritten resume wherever honest and natural.
 
-━━━ STEP 2: REWRITE THE RESUME ━━━
+━━━ STEP 3: REWRITE THE RESUME ━━━
 
-STRICT RULES:
-• NEVER invent jobs, degrees, skills, or numbers not in the original resume
-• ALWAYS produce a complete tailored resume — never refuse, never truncate
-• Every bullet point = strong action verb + what you did + measurable result (if available)
-• Mirror the JD's exact keywords and phrases naturally — ATS needs exact matches
-• Reorder bullets within each job to put the most JD-relevant ones first
-• Cut weak/irrelevant bullets; keep only what's relevant to this specific role
+RULES (follow strictly):
+• NEVER invent jobs, titles, degrees, skills, or numbers not in the original
+• ALWAYS produce the complete resume — never truncate
+• Rephrase existing experience using JD's exact terminology — this is the core task
+• Every bullet: strong past-tense action verb + specific task + measurable result (use numbers from original)
+• Reorder bullets within each role — most JD-relevant first
+• Cut bullets with zero relevance to this JD; keep 4-6 per role
+• Professional summary MUST name the exact job title from the JD
+• Skills section: JD-matched skills listed first
 
-SECTION-BY-SECTION GUIDE:
+FORMAT RULES:
+• Plain text only — no markdown, no #, no **, no *, no backticks
+• Use • for all bullet points
+• Section headings in ALL CAPS
+• Name on line 1, contact info on line 2
+• Output the full resume, no shortcuts
 
-[NAME & CONTACT]
-Full name on first line. Contact on second line: Phone | Email | LinkedIn | City, State
-
-[PROFESSIONAL SUMMARY]
-3-4 punchy sentences. Mention: (1) years of experience + field, (2) the exact job title you're applying for, (3) 2-3 skills directly from the JD, (4) a key career achievement.
-
-[WORK EXPERIENCE]
-Format each role exactly as:
-Company Name | Job Title | Month Year – Month Year
-
-• Start every bullet with a past-tense action verb
-• Include numbers wherever the original resume has them
-• Write 4-6 bullets per role, most JD-relevant first
-• Do NOT use "Responsible for" or "Helped with"
-
-[EDUCATION]
-Degree | Major | University | Year
-
-[SKILLS]
-Put JD-matched skills first. Group logically.
-
-[CERTIFICATIONS] (only if present in original)
-
-━━━ OUTPUT FORMAT ━━━
-Plain text only. Absolutely NO markdown — no #, no **, no *, no hashtags, no backticks.
-Use • for bullet points.
-Use ALL CAPS for section headings.
-Output the complete resume — do not truncate.
+SECTIONS TO INCLUDE (in this order):
+NAME
+CONTACT INFO
+PROFESSIONAL SUMMARY
+WORK EXPERIENCE
+EDUCATION
+SKILLS
+CERTIFICATIONS (only if in original)
 
 ━━━ ORIGINAL RESUME ━━━
 ${resumeText}
