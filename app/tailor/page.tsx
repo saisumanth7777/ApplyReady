@@ -365,24 +365,29 @@ function TailorPage() {
                 </div>
               )}
 
-              <div className="bg-white rounded-xl p-5 max-h-96 overflow-y-auto mb-4 text-left">
+              <div className="bg-white rounded-xl p-6 max-h-[480px] overflow-y-auto mb-4 text-left font-serif">
                 {(() => {
                   const lines = tailoredText.split("\n");
-                  const firstLineIndex = lines.findIndex(l => l.trim());
+                  const nonBlankIndices = lines.map((l, i) => l.trim() ? i : -1).filter(i => i >= 0);
+                  const nameIndex = nonBlankIndices[0] ?? -1;
+                  const contactIndex = nonBlankIndices[1] ?? -1;
                   return lines.map((line, i) => {
                     const trimmed = line.trim();
-                    if (!trimmed) return <div key={i} className="h-2" />;
+                    const cleanLine = trimmed.replace(/^#+\s*/, "");
+                    if (!trimmed) return <div key={i} className="h-1" />;
                     const isHeading = /^[A-Z][A-Z\s&\/]{4,}$/.test(trimmed);
                     const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-");
-                    const cleanLine = trimmed.replace(/^#+\s*/, "");
-                    if (i === firstLineIndex) return <p key={i} className="text-center text-lg font-bold text-gray-900 mb-1">{cleanLine}</p>;
+                    if (i === nameIndex) return <p key={i} className="text-center text-xl font-bold text-[#1a1a2e] mb-1 tracking-wide">{cleanLine}</p>;
+                    if (i === contactIndex && !isHeading) return (
+                      <p key={i} className="text-center text-[10px] text-gray-500 pb-2 mb-2 border-b-2 border-[#1a1a2e]">{cleanLine}</p>
+                    );
                     if (isHeading) return (
-                      <div key={i} className="mt-3 mb-1 border-b border-gray-300 pb-0.5">
-                        <span className="text-xs font-bold tracking-widest text-gray-700 uppercase">{trimmed}</span>
+                      <div key={i} className="mt-3 mb-1 border-b border-gray-200 pb-0.5">
+                        <span className="text-[10px] font-bold tracking-widest text-[#1a1a2e] uppercase">{trimmed}</span>
                       </div>
                     );
-                    if (isBullet) return <p key={i} className="text-xs text-gray-700 pl-3 py-0.5">{trimmed}</p>;
-                    return <p key={i} className="text-xs text-gray-600 py-0.5">{trimmed}</p>;
+                    if (isBullet) return <p key={i} className="text-[10px] text-gray-700 pl-4 py-0.5 leading-snug">{trimmed}</p>;
+                    return <p key={i} className="text-[10px] text-gray-600 py-0.5 leading-snug">{trimmed}</p>;
                   });
                 })()}
               </div>
